@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Export Classification Check</title>
+  <style>
+    body{font:16px/1.5 system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#172033}
+    label{display:block;font-weight:600;margin:.8rem 0 .2rem}input,textarea,select{box-sizing:border-box;width:100%;padding:.65rem;border:1px solid #9ba6b7;border-radius:6px}
+    button{margin-top:1rem;padding:.7rem 1.1rem;border:0;border-radius:6px;background:#244b85;color:white;font-weight:600;cursor:pointer}
+    pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f5f9;padding:1rem;border-radius:8px;min-height:4rem}
+    .note{border-left:4px solid #b87e23;padding:.5rem 1rem;background:#fff8e8}
+  </style>
+</head>
+<body>
+  <h1>Export Classification Check</h1>
+  <p class="note">This tool proposes a review route only. It never files a declaration; a licensed customs broker decides.</p>
+  <form id="classify-form">
+    <label for="description">Product description (10–2000 characters)</label>
+    <textarea id="description" minlength="10" maxlength="2000" required>Stainless steel vacuum flask for carrying hot drinks</textarea>
+    <label for="materials">Materials</label>
+    <select id="materials"><option value="stainless_steel">Stainless steel</option><option value="carbon_steel">Carbon steel</option><option value="iron">Iron</option><option value="aluminium">Aluminium</option><option value="plastic">Plastic</option><option value="other">Other / mixed</option><option value="unknown">Unknown</option></select>
+    <label for="use">Intended use (optional)</label><input id="use" placeholder="Reusable drink container">
+    <label for="country">Destination country (ISO alpha-2)</label><input id="country" value="US" pattern="[A-Z]{2}" required>
+    <label for="client">Client ID</label><input id="client" value="demo-client" required>
+    <button type="submit">Submit classification check</button>
+  </form>
+  <h2>Run status and result</h2><pre id="result">No request submitted.</pre>
+  <script src="app.js"></script>
+</body>
+</html>

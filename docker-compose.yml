@@ -1,0 +1,198 @@
+name: export-classification-service
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-exporter}
+      POSTGRES_USER: ${POSTGRES_USER:-exporter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports: ["5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: ["redis_data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  llm-stub:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    command: ["uvicorn", "src.llm_stub.app:app", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      STUB_DELAY_MS: ${STUB_DELAY_MS:-0}
+    ports: ["8001:8001"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/healthz', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  verifier:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.verifier
+    environment:
+      PROMPT_VERSION: ${PROMPT_VERSION:-v1}
+    ports: ["8002:8002"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/healthz', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_REQUIRED: ${REDIS_REQUIRED:-true}
+      VERIFIER_URL: ${VERIFIER_URL:-http://verifier:8002}
+      PROMPT_VERSION: ${PROMPT_VERSION:-v1}
+    ports: ["8000:8000"]
+    volumes:
+      - ./corpus:/app/corpus
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    restart: unless-stopped
+
+  agent-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_REQUIRED: ${REDIS_REQUIRED:-true}
+      VERIFIER_URL: ${VERIFIER_URL:-http://verifier:8002}
+      PROMPT_VERSION: ${PROMPT_VERSION:-v1}
+    volumes:
+      - ./corpus:/app/corpus
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      verifier: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis,os; redis.Redis.from_url(os.getenv('REDIS_URL')).ping()"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  chroma:
+    image: chromadb/chroma:0.5.23
+    profiles: ["corpus"]
+    environment:
+      IS_PERSISTENT: "TRUE"
+      PERSIST_DIRECTORY: /chroma/chroma
+    volumes: ["chroma_data:/chroma/chroma"]
+    ports: ["8004:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  indexer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.indexer
+    profiles: ["corpus"]
+    env_file: .env
+    volumes: ["./corpus:/app/corpus"]
+    depends_on:
+      chroma: {condition: service_healthy}
+    restart: "no"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["observability"]
+    ports: ["9090:9090"]
+    volumes: ["./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      api: {condition: service_healthy}
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    profiles: ["observability"]
+    ports: ["3000:3000"]
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      prometheus: {condition: service_started}
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.63.0
+    profiles: ["observability"]
+    ports: ["16686:16686", "4317:4317", "4318:4318"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:16686/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  loadtest:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.loadtest
+    profiles: ["loadtest"]
+    volumes:
+      - ./results:/app/results
+    depends_on:
+      api: {condition: service_healthy}
+    command: ["--headless", "-H", "http://api:8000", "--users", "5", "--spawn-rate", "1", "--run-time", "60s", "--csv", "/app/results/load"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:

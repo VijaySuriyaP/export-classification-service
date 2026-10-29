@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Export classification proposal",
+  "type": "object",
+  "required": ["run_id", "status", "route", "basis", "proposed_hs_code", "rule_applied", "citations", "export_policy", "escalation_path", "prompt_version", "degraded", "disclaimer"],
+  "properties": {
+    "run_id": {"type": "string"},
+    "status": {"type": "string"},
+    "route": {"enum": ["clear-for-filing", "seek-product-clarification", "specialist-classification-review"]},
+    "basis": {"type": "string"},
+    "proposed_hs_code": {"type": ["string", "null"]},
+    "rule_applied": {"type": ["string", "null"]},
+    "citations": {"type": "array", "items": {"type": "object"}},
+    "export_policy": {"type": ["object", "null"]},
+    "escalation_path": {"type": "array", "items": {"type": "string"}},
+    "prompt_version": {"type": "string"},
+    "degraded": {"type": "boolean"},
+    "disclaimer": {"type": "string"}
+  }
+}
