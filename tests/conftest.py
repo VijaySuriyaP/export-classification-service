@@ -7,12 +7,12 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./tests/test_exporter.db")
 os.environ.setdefault("REDIS_REQUIRED", "false")
 os.environ["VERIFIER_URL"] = ""
 
-import pytest
-from sqlalchemy import delete
+import pytest  # noqa: E402
+from sqlalchemy import delete  # noqa: E402
 
-from src.api.queue import reset_memory_queue
-from src.common.db import SessionLocal, init_db
-from src.common.db import CostLedger, EvalScore, FeedbackRecord, IndexFreshness, QuarantineRecord, RunRecord, RunStep
+from src.api.queue import reset_memory_queue  # noqa: E402
+from src.common.db import SessionLocal, init_db  # noqa: E402
+from src.common.db import CostLedger, EvalScore, FeedbackRecord, IndexFreshness, QuarantineRecord, RunRecord, RunStep  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

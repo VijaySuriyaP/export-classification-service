@@ -7,7 +7,6 @@ import time
 from typing import Any
 
 import httpx
-from sqlalchemy import select
 
 from src.agent.graph import classify_request
 from src.common.db import RunRecord, RunStep, SessionLocal, init_db

@@ -12,7 +12,7 @@ app = FastAPI(title="Offline LLM stub", version="0.1.0")
 
 
 class CompletionRequest(BaseModel):
-    model: str = "stub"
+    model: str = ""
     messages: list[dict[str, Any]]
 
 
@@ -29,7 +29,7 @@ def chat_completions(request: CompletionRequest) -> dict[str, Any]:
     time.sleep(delay)
     content = '{"route":"specialist-classification-review","proposed_hs_code":null,"reason":"offline stub; evidence required"}'
     prompt_chars = sum(len(str(message.get("content", ""))) for message in request.messages)
-    return {"id": "stub-completion", "object": "chat.completion", "created": int(time.time()), "model": request.model,
+    return {"id": "stub-completion", "object": "chat.completion", "created": int(time.time()), "model": request.model or os.getenv("LLM_MODEL_PRIMARY", ""),
         "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
         "usage": {"prompt_tokens": max(1, prompt_chars // 4), "completion_tokens": max(1, len(content) // 4),
         "total_tokens": max(2, prompt_chars // 4 + len(content) // 4)}}
