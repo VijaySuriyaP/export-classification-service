@@ -1,6 +1,6 @@
 # Project progress checklist
 
-`[x]` means the implementation/source exists; it does not mean a runtime or corpus acceptance gate passed. `[ ]` means the requirement remains incomplete or the required evidence has not been produced. The critical walking-skeleton gate (Step 12) remains unchecked until `scripts/smoke.sh` passes on Docker.
+`[x]` means the implementation/source exists; it does not mean every runtime or corpus acceptance gate passed. `[ ]` means the requirement remains incomplete or the required evidence has not been produced.
 
 ## Phase 0 — scaffolding
 - [x] Step 1: `README.md`, `.gitignore`, `.env.example`, `Makefile`. Produced environment-only configuration and common commands; verify with `cat .env.example` and Compose configuration.
@@ -14,9 +14,9 @@
 - [x] Step 7: `src/api/main.py`, `src/api/queue.py`, `src/api/ratelimit.py`; actual local API/quarantine tests pass.
 - [x] Step 8: `src/llm/provider.py`, `src/llm_stub/app.py`; provider is env-configured, stub is offline.
 - [x] Step 9: `src/worker/tasks.py`, `src/worker/main.py`, `docker/Dockerfile.api`, `docker/Dockerfile.worker`; local worker integration test passes.
-- [x] Step 10: `docker-compose.yml`, service Dockerfiles, `scripts/smoke.sh`; Compose YAML parses, but Docker itself is unavailable here.
+- [x] Step 10: `docker-compose.yml`, service Dockerfiles, `scripts/smoke.sh`; Compose configuration and runtime service startup were verified.
 - [x] Step 11: `web/index.html`, `web/app.js`, nginx config; browser verification remains pending.
-- [ ] Step 12: clean Compose walking-skeleton gate and `skeleton-ok` tag. **Not run** because Docker is unavailable. Required next action: `cp .env.example .env`, set a private DB password and matching URL, then `docker compose down -v --remove-orphans && bash scripts/smoke.sh`.
+- [x] Step 12: clean Compose walking-skeleton gate and `skeleton-ok` tag. Verified with clean Compose smoke runs, web health, and three healthy workers; see `verification/logs/B_smoke_final.txt`, `verification/logs/B_final_ps.txt`, and `verification/logs/B_final_scale3.txt`. The web healthcheck was corrected to probe IPv4 loopback because Alpine resolved `localhost` to IPv6.
 
 ## Phase 2 — official corpus and indexing
 - [x] Step 13: `corpus/SOURCES.md`, `scripts/download_corpus.sh`; official source starting points and version/effective-date instructions are present. PDFs are not bundled.
@@ -63,14 +63,14 @@
 - [ ] Step 42: one-versus-three-worker measurements, failing concurrency, bottleneck analysis, caching and cost comparison. No measurements claimed.
 
 ## Phase 9 — docs, runbook and final QA
-- [x] Step 43: `docs/RUNBOOK.md`, `docs/INCIDENT_LOG.md`; incident log contains the real local Ruff-install attempt failure only.
+- [x] Step 43: `docs/RUNBOOK.md`, `docs/INCIDENT_LOG.md`; incident log contains the real Ruff-install and Docker-engine failures.
 - [x] Step 44: ten demo scripts and `docs/DEMO_CHECKLIST.md`; some commands explicitly depend on Compose/corpus.
 - [x] Step 45: final README, `docs/REPORT.md`, `SUBMISSION.md` requirement mapping.
-- [ ] Step 46: clean-clone Compose smoke, full container pytest, secrets/provider grep, scale=3 verification. Docker unavailable; this is still an outstanding acceptance gate.
+- [ ] Step 46: clean-clone Compose smoke, secrets/provider grep and final QA remain. Container pytest and scale=3 verification passed; a clean-clone run and secrets audit are still outstanding.
 
 ## Verification performed in this workspace
 - `python -m compileall -q src tests scripts loadtest` — pass.
-- `pytest -q` — 24 passed; the latest run was before packaging.
-- `docker-compose.yml` — parsed successfully with Python YAML; this is syntax parsing, not `docker compose config`.
-- `ruff check` — not run because Ruff is not installed and the package index could not be reached; see `docs/INCIDENT_LOG.md`.
-- `docker compose up`, `scripts/smoke.sh`, real corpus indexing, load testing and scale testing — not run because Docker is not installed in the build workspace.
+- `pytest -q` — 24 passed.
+- `docker compose config -q` — pass.
+- Containerized Python 3.11 pytest — 24 passed; containerized Ruff — all checks passed.
+- `docker compose up`, `scripts/smoke.sh`, and scale=3 verification — passed after starting Docker Desktop; real corpus indexing and load testing remain unrun because official PDFs are not present.

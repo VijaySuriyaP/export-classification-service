@@ -1,0 +1,1 @@
+Environment checks captured; local secrets omitted.

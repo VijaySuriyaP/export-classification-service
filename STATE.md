@@ -1,11 +1,11 @@
 # Current state — resumable checkpoint
 
 - **Repository:** `export-classification-service`
-- **Critical next step:** Step 12, the walking-skeleton acceptance gate. The code is drafted, but the gate must not be marked complete until a real Docker Compose smoke test passes.
-- **Exact next command:** `cp .env.example .env && docker compose down -v --remove-orphans && bash scripts/smoke.sh`
-- **Environment limitation:** Docker/Compose are not installed in the build workspace. The Compose YAML parses, but no container build/start/health/request test has been observed here.
+- **Critical next step:** Phase C container test/lint verification, followed by official corpus acquisition and indexing.
+- **Latest gate command:** `docker compose down -v --remove-orphans` followed by `scripts/smoke.sh` using Git Bash.
+- **Environment status:** Docker Desktop Linux engine is running. The clean Compose smoke gate passed twice, the web endpoint and healthcheck passed, and three scaled workers were healthy.
 - **Latest local test result:** `python -m compileall -q src tests scripts loadtest` passed; `pytest -q` returned **24 passed** in Python 3.13.5. Container images target Python 3.11.
-- **Ruff:** unverified; installation failed due package-index DNS failure. See `docs/INCIDENT_LOG.md`.
+- **Ruff:** `ruff check .` passed locally with Ruff 0.8.4. The earlier installation incident remains documented in `docs/INCIDENT_LOG.md`.
 - **Official corpus:** no PDFs are bundled and no tariff text is invented. Download the current official documents listed in `corpus/SOURCES.md` into `corpus/raw/`; then run `make index` and inspect the output against the original PDFs.
 
 ## Key decisions
@@ -23,7 +23,7 @@
 
 ## Known limitations / outstanding work
 
-- Step 12 Compose smoke gate remains the first unchecked critical step.
+- Step 12 Compose smoke gate passed. The web healthcheck now probes `127.0.0.1` to avoid Alpine localhost IPv6 resolution.
 - Current CBIC tariff/GRI/Chapters 73 and 96 and DGFT Schedule-II PDFs are not bundled/indexed; a safe review route is the expected output while sources are missing.
 - Full LangGraph model-selected loop, complete note/policy extraction, OCR execution, semantic embeddings, provider breaker integration, reliable queue redelivery, OTEL, complete metrics/Grafana, cost/budget enforcement and integrated cache are incomplete.
 - Scenario set is a coverage scaffold; every row says `needs_corpus_confirmation` until actual official source text and gold labels are reviewed.
@@ -33,5 +33,4 @@
 
 1. Read `PROGRESS.md` and this file.
 2. Run `python scripts/resume_check.py` (with Python available) or use the first unchecked step listed in `PROGRESS.md`.
-3. Finish Step 12 first on a Docker host. Only mark it passed after `bash scripts/smoke.sh` submits a request and sees a terminal result.
-4. Continue only after the skeleton gate succeeds. Add official corpus PDFs, verify passages, then run tests/evaluation/load experiments and retain actual results.
+3. Continue with containerized Phase C checks, then add official corpus PDFs, verify passages, and run evaluation/load experiments while retaining actual results.
